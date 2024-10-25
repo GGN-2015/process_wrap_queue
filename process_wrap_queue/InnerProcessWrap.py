@@ -42,7 +42,7 @@ class InnerProcessWrap:
         self.return_value    = None
         self.end_flag        = False # 是否进行过死亡结算
         self.aux_info        = {}
-        self.parent_conn     = None
+        self.queue           = None
         self.lock            = threading.Lock()
 
     # 获取当前状态所处的时间
@@ -74,14 +74,11 @@ class InnerProcessWrap:
                     self.run_time     = time.time() - self.begin_time # 总运行时间
                     self.begin_time   = time.time()
                     try:
-                        self.return_value = self.parent_conn.recv()
+                        self.return_value = self.queue.get_nowait() # 不要等待
                     except:
                         self.return_value = None
                     finally:
-                        try:
-                            self.parent_conn.close() # close it, if it can be closed
-                        except:
-                            pass
+                        self.queue = None
                 update_dic = { # 程序已经运行结束
                     "status": "TERM",
                     "info": {
@@ -96,12 +93,12 @@ class InnerProcessWrap:
     def run_task(self):
         if self.pobj is not None: # 不要重复启动已经启动过的任务
             return
-        def worker(conn, args: list) -> None:
+        def worker(queue, args: list) -> None:
             tmp = self.worker_function(*args)
-            conn.send(tmp)
-        self.parent_conn, child_conn = multiprocessing.Pipe()
+            queue.put(tmp)
+        self.queue = multiprocessing.Queue()
         self.begin_time = time.time()
-        self.pobj       = multiprocessing.Process(target=worker, args=(child_conn, self.args, ))
+        self.pobj       = multiprocessing.Process(target=worker, args=(self.queue, self.args, ))
         self.pobj.start()
         self.monitor.start() # 启动监视器线程
 
@@ -114,14 +111,13 @@ class InnerProcessWrap:
             return
         self.pobj.terminate()    # 结束进程
         self.pobj.join()         # 结束进程
-        self.parent_conn.close() # 关闭管道
         with self.lock:
             self.aux_info.update({"killed": True}) # 是由用户自己杀死的
         self.get_status()            # 更新状态信息
 
 def test1():
     def test_function(a, b, c, d) -> str:
-        time.sleep(5)
+        time.sleep(1)
         return "%d, %d, %d, %d" % (a, b, c, d)
     pw = InnerProcessWrap(test_function, (1, 2, 3, 4))
     print(pw.get_status())
@@ -147,4 +143,4 @@ def test2():
     print(pw.get_status())
 
 if __name__ == "__main__":
-    test2()
+    test1()
