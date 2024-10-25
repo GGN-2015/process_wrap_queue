@@ -8,7 +8,7 @@ description = "a python module for process based task queue."
 authors = [
     { name = "GGN_2015", email = "premierbob@qq.com" }
 ]
-version = "0.0.2"
+version = "0.0.4"
 dependencies = []
 readme = "README.md"
 license = { file = "LICENSE" }

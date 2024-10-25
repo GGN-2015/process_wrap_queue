@@ -77,6 +77,11 @@ class InnerProcessWrap:
                         self.return_value = self.parent_conn.recv()
                     except:
                         self.return_value = None
+                    finally:
+                        try:
+                            self.parent_conn.close() # close it, if it can be closed
+                        except:
+                            pass
                 update_dic = { # 程序已经运行结束
                     "status": "TERM",
                     "info": {
@@ -107,8 +112,9 @@ class InnerProcessWrap:
             return
         if not self.pobj.is_alive(): # 已经结束了，不用再杀死了
             return
-        self.pobj.terminate() # 结束进程
-        self.pobj.join()      # 结束进程
+        self.pobj.terminate()    # 结束进程
+        self.pobj.join()         # 结束进程
+        self.parent_conn.close() # 关闭管道
         with self.lock:
             self.aux_info.update({"killed": True}) # 是由用户自己杀死的
         self.get_status()            # 更新状态信息
