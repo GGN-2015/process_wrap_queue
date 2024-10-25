@@ -21,12 +21,15 @@ global_process_wrap_dict = {}
 class ProcessWrap:
 
     # 指定命令和当前工作目录
-    def __init__(self, cmd: list, cwd: str):
+    def __init__(self, cmd: list, cwd: str, timeout=None):
         def monitor_function(): # 轮询监视器函数
             while True:
                 time.sleep(0.15)
                 if self.get_status()["status"] == "TERM": # 监视器退出
                     return
+                if self.timeout is not None: # 超时机制
+                    if self.get_status()["status"] == "RUN" and self.get_status_time_now() >= timeout:
+                        self.kill_task()
         self.obj_uuid   = "ProcessWrap_" + generate_random_string(128) # 把自己注册到全局管理器对象
         global global_process_wrap_dict
         global_process_wrap_dict[self.obj_uuid] = self
@@ -35,6 +38,7 @@ class ProcessWrap:
         self.cwd        = cwd
         self.begin_time = time.time() # 什么时刻进入当前状态
         self.pobj       = None
+        self.timeout    = timeout
         self.monitor    = threading.Thread(target=monitor_function)
         self.stdout     = None
         self.stderr     = None
@@ -106,7 +110,7 @@ class ProcessWrap:
         self.pobj.wait()         # 等待进程自然结束
         self.get_status()        # 更新状态信息
 
-if __name__ == "__main__":
+def test1():
     pw = ProcessWrap(shlex.split("bash -c 'sleep 1; sleep 1; sleep 1; sleep 1; sleep 1; echo hello'"), os.getcwd())
     print(pw.get_status())
     pw.run_task()
@@ -115,3 +119,14 @@ if __name__ == "__main__":
     print(pw.get_status())
     pw.kill_task()
     print(pw.get_status())
+
+def test2():
+    pw = ProcessWrap(shlex.split("bash -c 'sleep 1; sleep 1; sleep 1; sleep 1; sleep 1; echo hello'"), os.getcwd(), timeout=1.5)
+    print(pw.get_status())
+    pw.run_task()
+    print(pw.get_status())
+    time.sleep(3)
+    print(pw.get_status())
+
+if __name__ == "__main__":
+    test2()
