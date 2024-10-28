@@ -40,6 +40,7 @@ class ProcessWrapQueue:
                         if len(self.pend_queue) > 0:
                             pend_pw, self.pend_queue = self.pend_queue[0], self.pend_queue[1:]
                             self.run_queue.append(pend_pw)
+                            time.sleep(0.5)    # 保证不要有太过频繁的任务启停
                             pend_pw.run_task() # 先放到队列里，再启动
                     if self.queue_status == "AUTO" and len(self.run_queue) == 0 and len(self.pend_queue) == 0:
                         self.queue_status = "QUIT"

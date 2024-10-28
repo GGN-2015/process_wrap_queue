@@ -169,4 +169,4 @@ def test2():
     print(pw.get_status())
 
 if __name__ == "__main__":
-    test1()
+    test2()
